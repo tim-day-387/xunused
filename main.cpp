@@ -114,7 +114,7 @@ public:
     std::set_difference(Uses.begin(), Uses.end(), Defs.begin(), Defs.end(),
                         std::back_inserter(ExternalUses));
 
-    for (auto *F : ExternalUses) {
+    for (auto *F : Uses) {
       // llvm::errs() << "ExternalUses: " << F->getNameAsString() << "\n";
       std::string USR;
       if (!getUSRForDecl(F, USR))
@@ -162,9 +162,6 @@ public:
 
       auto Begin = F->getSourceRange().getBegin();
       if (Result.SourceManager->isInSystemHeader(Begin))
-        return;
-
-      if (!Result.SourceManager->isWrittenInMainFile(Begin))
         return;
 
       auto *MD = dyn_cast<CXXMethodDecl>(F);
@@ -276,7 +273,8 @@ int main(int argc, const char **argv) {
 
   for (auto &KV : AllDecls) {
     DefInfo &I = KV.second;
-    if (I.Definition && I.Uses == 0) {
+    // TODO @timday: hardcode path to ignore system headers
+    if (I.Definition && I.Uses == 0 && I.Filename.find("lustre-release") != std::string::npos) {
       llvm::errs() << I.Filename << ":" << I.Line << ": warning:"
                    << " Function '" << I.Name << "' is unused\n";
       for (auto &D : I.Declarations) {
