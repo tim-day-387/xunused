@@ -1,0 +1,49 @@
+name: LLVM build
+
+on:
+  push:
+    branches: main
+  pull_request:
+
+jobs:
+  llvm:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version: [21.1.0]
+        os: [ubuntu-22.04]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: xunused
+
+      - name: Download source for Clang/LLVM ${{ matrix.version }}
+        run: |
+          curl -L https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-${{ matrix.version }}.tar.gz | tar -xz
+
+      - name: Install build prerequisites
+        run: |
+          sudo apt-get -y install cmake ninja-build
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2.20
+
+      - name: Create the build for Clang/LLVM ${{ matrix.version }} with xunused
+        run: |
+          mkdir build
+          cmake -B build -G Ninja -S llvm-project-llvmorg-${{ matrix.version }}/llvm \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DLLVM_ENABLE_PROJECTS=clang \
+            -DLLVM_EXTERNAL_PROJECTS=xunused \
+            -DLLVM_EXTERNAL_XUNUSED_SOURCE_DIR=${GITHUB_WORKSPACE}/xunused
+
+      - name: Build xunused for Clang/LLVM ${{ matrix.version }}
+        run: cmake --build build --target xunused
+
+      # TODO: Enable tests once all tests are passing for this workflow
+      # - name: Run tests
+      #   run: cmake --build build --target check-xunused
